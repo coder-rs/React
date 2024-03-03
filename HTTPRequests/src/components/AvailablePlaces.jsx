@@ -1,10 +1,46 @@
-import Places from './Places.jsx';
-
+import { useState, useEffect } from "react";
+import Places from "./Places.jsx";
+import Error from "./Error.jsx";
+import { sortPlacesByDistance } from "../loc.js";
+import { fetchAvailablePlaces } from "../http.jsx";
 export default function AvailablePlaces({ onSelectPlace }) {
+  const [isFetching, setIsFetching] = useState(false);
+  const [availablePlaces, setAvailablePlaces] = useState([]);
+  const [error, setError] = useState();
+  useEffect(() => {
+    async function fetchPlaces() {
+      setIsFetching(true);
+      try {
+        const places = await fetchAvailablePlaces();
+        navigator.geolocation.getCurrentPosition((position) => {
+          const sortedPlaces = sortPlacesByDistance(
+            places,
+            position.coords.latitude,
+            position.coords.longitude
+          );
+          setAvailablePlaces(sortedPlaces);
+          setIsFetching(false);
+        });
+      } catch (error) {
+        setError({
+          message: error.message || "Failed try again later!",
+        });
+      }
+      setIsFetching(false);
+    }
+    fetchPlaces();
+  }, []);
+
+  if (error) {
+    return <Error title="An Error occurred!" message={error.message} />;
+  }
+
   return (
     <Places
       title="Available Places"
-      places={[]}
+      places={availablePlaces}
+      isLoading={isFetching}
+      loadingText={"loading places..."}
       fallbackText="No places available."
       onSelectPlace={onSelectPlace}
     />
